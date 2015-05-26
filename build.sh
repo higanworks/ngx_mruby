@@ -11,7 +11,9 @@
 
 set -e
 
-. ./nginx_version
+if [ "$NGINX_SRC_VER" = ""  ]; then
+  . ./nginx_version
+fi
 
 if [ "$NGINX_CONFIG_OPT_ENV" != "" ]; then
     NGINX_CONFIG_OPT=$NGINX_CONFIG_OPT_ENV
