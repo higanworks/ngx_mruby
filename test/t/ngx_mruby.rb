@@ -51,6 +51,7 @@ end
 t.assert('ngx_mruby - output filter', 'location /filter_dynamic_arg?hoge=fuga') do
   res = HttpRequest.new.get base + '/filter_dynamic_arg?hoge=fuga'
   t.assert_equal 'output filter: hoge=fuga', res["body"]
+  t.assert_equal 'hoge=fuga', res["x-new-header"]
 end
 
 t.assert('ngx_mruby - Nginx::Connection#{local_ip,local_port}', 'location /server_ip_port') do
@@ -71,6 +72,30 @@ t.assert('ngx_mruby', 'location /header') do
   t.assert_equal "nothing", res1["x-response-header"]
   t.assert_equal "X-REQUEST-HEADER found", res2["body"]
   t.assert_equal "hoge", res2["x-response-header"]
+end
+
+t.assert('ngx_mruby', 'location /header/internal') do
+  res = HttpRequest.new.get base + '/header/internal'
+  t.assert_equal "hoge", res["x-internal-header"]
+end
+
+t.assert('ngx_mruby', 'location /headers_out_delete') do
+  res = HttpRequest.new.get base + '/headers_out_delete'
+  range = (1..53).map(&:to_s)
+  expect_deleted = %w(2 1 22 21 25 42 41 43 47 40 51 53 52)
+  expect_existing = range - expect_deleted
+  expect_deleted.each do |n|
+    t.assert_equal nil, res["ext-header#{n}"], n
+  end
+  expect_existing.each do |n|
+    t.assert_equal 'foo', res["ext-header#{n}"], n
+  end
+end
+
+t.assert('ngx_mruby', 'location /headers_in_delete') do
+  res = HttpRequest.new.get base + '/headers_in_delete', nil, {"X-REQUEST-HEADER" => "hoge"}
+  t.assert_equal "hoge", res["x-internal-header"]
+  t.assert_equal "X-REQUEST-HEADER is nil", res["body"]
 end
 
 t.assert('ngx_mruby - mruby_add_handler', '*\.rb') do
@@ -144,6 +169,39 @@ end
 t.assert('ngx_mruby - get server class name', 'location /server_class') do
   res = HttpRequest.new.get base + '/server_class'
   t.assert_equal "Nginx", res["body"]
+end
+
+t.assert('ngx_mruby - add response header in output_filter', 'location /output_filter_header') do
+  res = HttpRequest.new.get base + '/output_filter_header/index.html'
+  t.assert_equal "output_filter_header\n", res["body"]
+  t.assert_equal "new_header", res["x-add-new-header"]
+end
+
+t.assert('ngx_mruby - update built-in response header in output_filter', 'location /output_filter_builtin_header') do
+  res = HttpRequest.new.get base + '/output_filter_builtin_header/index.html'
+  t.assert_equal "output_filter_builtin_header\n", res["body"]
+  t.assert_equal "ngx_mruby", res["server"]
+end
+
+t.assert('ngx_mruby - update built-in response header in http context', 'location /mruby') do
+  # content phase
+  res = HttpRequest.new.get base + '/mruby'
+  t.assert_equal "global_ngx_mruby", res["server"]
+  # proxy phase
+  res = HttpRequest.new.get base + '/proxy'
+  t.assert_equal "global_ngx_mruby", res["server"]
+  # access phase
+  res = HttpRequest.new.get base + '/headers_in_delete'
+  t.assert_equal "global_ngx_mruby", res["server"]
+  # redirect phase
+  res = HttpRequest.new.get base + '/redirect'
+  t.assert_equal "global_ngx_mruby", res["server"]
+  # output filter phase, already set other Server header
+  res = HttpRequest.new.get base + '/output_filter_builtin_header/index.html'
+  t.assert_not_equal "global_ngx_mruby", res["server"]
+  # return error
+  res = HttpRequest.new.get base + '/return_and_error'
+  t.assert_equal "global_ngx_mruby", res["server"]
 end
 
 t.report
