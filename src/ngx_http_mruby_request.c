@@ -28,18 +28,16 @@ static mrb_value ngx_mrb_set_##method_suffix(mrb_state *mrb, mrb_value self); \
 static mrb_value ngx_mrb_set_##method_suffix(mrb_state *mrb, mrb_value self)    \
 { \
   mrb_value arg; \
-  u_char *str; \
   size_t len; \
-  ngx_http_request_t *r; \
+  ngx_http_request_t *r = ngx_mrb_get_request(); \
   mrb_get_args(mrb, "o", &arg); \
   if (mrb_nil_p(arg)) { \
     return self; \
   } \
-  str = (u_char *)mrb_str_to_cstr(mrb, arg); \
   len = RSTRING_LEN(arg); \
-  r = ngx_mrb_get_request(); \
   member.len = len; \
-  member.data = (u_char *)str; \
+  member.data = (u_char *)ngx_palloc(r->pool, len); \
+  ngx_memcpy(member.data, RSTRING_PTR(arg), len); \
   return self; \
 }
 
@@ -86,7 +84,7 @@ static mrb_value ngx_mrb_get_request_headers_in(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_get_request_headers_out(mrb_state *mrb,
     mrb_value self);
 static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb,
-    ngx_list_t *headers);
+    ngx_list_t *headers, ngx_pool_t *pool);
 static mrb_value ngx_mrb_set_request_headers_in(mrb_state *mrb, mrb_value self);
 static mrb_value ngx_mrb_set_request_headers_out(mrb_state *mrb,
     mrb_value self);
@@ -209,7 +207,7 @@ static mrb_value ngx_mrb_read_request_body(mrb_state *mrb, mrb_value self)
 
   if (r->method != NGX_HTTP_POST && r->method != NGX_HTTP_PUT) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "ngx_mrb_read_request_body can't read"
-        " when r->mehtod is neither POST nor PUT");
+        " when r->method is neither POST nor PUT");
   }
 
   rc = ngx_http_read_client_request_body(r, read_request_body_cb);
@@ -313,7 +311,8 @@ static int ngx_mruby_builtin_header_lookup_token(u_char *name, size_t namelen) {
 }
 
 
-static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers)
+static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers,
+    ngx_pool_t *pool)
 {
   mrb_value mrb_key, mrb_val;
   u_char *key, *val;
@@ -326,10 +325,21 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers)
 
   mrb_get_args(mrb, "oo", &mrb_key, &mrb_val);
 
-  key = (u_char *)mrb_str_to_cstr(mrb, mrb_key);
-  val = (u_char *)mrb_str_to_cstr(mrb, mrb_val);
   key_len = RSTRING_LEN(mrb_key);
   val_len = RSTRING_LEN(mrb_val);
+
+  key = ngx_palloc(pool, key_len);
+  if (key == NULL) {
+    return NGX_ERROR;
+  }
+  val = ngx_palloc(pool, val_len);
+  if (val == NULL) {
+    return NGX_ERROR;
+  }
+
+  ngx_memcpy(key, (u_char *)RSTRING_PTR(mrb_key), key_len);
+  ngx_memcpy(val, (u_char *)RSTRING_PTR(mrb_val), val_len);
+
   part  = &headers->part;
   header = part->elts;
 
@@ -339,6 +349,7 @@ static ngx_int_t ngx_mrb_set_request_header(mrb_state *mrb, ngx_list_t *headers)
     if (r->headers_out.server == NULL) {
       return NGX_ERROR;
     }
+    r->headers_out.server->hash = 1;
     r->headers_out.server->key.data = key;
     r->headers_out.server->key.len = key_len;
     r->headers_out.server->value.data = val;
@@ -524,7 +535,7 @@ static mrb_value ngx_mrb_set_request_headers_in(mrb_state *mrb, mrb_value self)
 {
   ngx_http_request_t *r;
   r = ngx_mrb_get_request();
-  ngx_mrb_set_request_header(mrb, &r->headers_in.headers);
+  ngx_mrb_set_request_header(mrb, &r->headers_in.headers, r->pool);
   return self;
 }
 
@@ -532,7 +543,7 @@ static mrb_value ngx_mrb_set_request_headers_out(mrb_state *mrb, mrb_value self)
 {
   ngx_http_request_t *r;
   r = ngx_mrb_get_request();
-  ngx_mrb_set_request_header(mrb, &r->headers_out.headers);
+  ngx_mrb_set_request_header(mrb, &r->headers_out.headers, r->pool);
   return self;
 }
 
@@ -578,7 +589,14 @@ static mrb_value ngx_mrb_get_request_var_hostname(mrb_state *mrb,
     mrb_value self)
 {
   mrb_value v = ngx_mrb_get_request_var(mrb, self);
-  return mrb_funcall(mrb, v, "hostname", 0, NULL);
+  return mrb_funcall(mrb, v, "host", 0, NULL);
+}
+
+static mrb_value ngx_mrb_get_request_var_authority(mrb_state *mrb,
+    mrb_value self)
+{
+  mrb_value v = ngx_mrb_get_request_var(mrb, self);
+  return mrb_funcall(mrb, v, "http_host", 0, NULL);
 }
 
 static mrb_value ngx_mrb_get_request_var_filename(mrb_state *mrb,
@@ -622,6 +640,12 @@ static mrb_value ngx_mrb_headers_out_obj(mrb_state *mrb, mrb_value self)
   return ngx_mrb_get_class_obj(mrb, self, "headers_out_obj", "Headers_out");
 }
 
+static mrb_value ngx_mrb_sub_request_check(mrb_state *mrb, mrb_value str)
+{
+  ngx_http_request_t *r = ngx_mrb_get_request();
+  return (r != r->main) ? mrb_true_value() : mrb_false_value();
+}
+
 void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
 {
   struct RClass *class_request;
@@ -649,7 +673,10 @@ void ngx_mrb_request_class_init(mrb_state *mrb, struct RClass *class)
   mrb_define_method(mrb, class_request, "headers_in", ngx_mrb_headers_in_obj, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_request, "headers_out", ngx_mrb_headers_out_obj, MRB_ARGS_NONE());
 
+  mrb_define_method(mrb, class_request, "sub_request?", ngx_mrb_sub_request_check, MRB_ARGS_NONE());
+
   mrb_define_method(mrb, class_request, "hostname", ngx_mrb_get_request_var_hostname, MRB_ARGS_NONE());
+  mrb_define_method(mrb, class_request, "authority", ngx_mrb_get_request_var_authority, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_request, "filename", ngx_mrb_get_request_var_filename, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_request, "user", ngx_mrb_get_request_var_user, MRB_ARGS_NONE());
 
