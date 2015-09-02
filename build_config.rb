@@ -15,7 +15,7 @@ MRuby::Build.new do |conf|
   conf.gem :github => 'iij/mruby-pack'
   conf.gem :github => 'iij/mruby-socket'
   conf.gem :github => 'mattn/mruby-json'
-  conf.gem :github => 'mattn/mruby-onig-regexp'
+  conf.gem :github => 'mattn/mruby-pcre-regexp'
   conf.gem :github => 'matsumoto-r/mruby-redis'
   conf.gem :github => 'matsumoto-r/mruby-vedis'
   conf.gem :github => 'matsumoto-r/mruby-sleep'
