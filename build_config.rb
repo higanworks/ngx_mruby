@@ -24,6 +24,7 @@ MRuby::Build.new do |conf|
   conf.gem :github => 'matsumoto-r/mruby-mutex'
   conf.gem :github => 'matsumoto-r/mruby-cache'
   conf.gem :github => 'matsumoto-r/mruby-httprequest'
+  conf.gem :github => 'luisbebop/mruby-polarssl'
 
   # ngx_mruby extended class
   conf.gem '../mrbgems/ngx_mruby_mrblib'
