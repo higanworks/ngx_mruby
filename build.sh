@@ -18,7 +18,7 @@ fi
 if [ "$NGINX_CONFIG_OPT_ENV" != "" ]; then
     NGINX_CONFIG_OPT=$NGINX_CONFIG_OPT_ENV
 else
-    NGINX_CONFIG_OPT='--prefix='`pwd`'/build/nginx --with-http_stub_status_module'
+    NGINX_CONFIG_OPT='--prefix='`pwd`'/build/nginx --with-http_stub_status_module --with-stream --without-stream_access_module'
 fi
 
 if [ "$NUM_THREADS_ENV" != "" ]; then

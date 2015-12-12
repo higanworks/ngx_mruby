@@ -15,16 +15,13 @@
 #include "ngx_http_mruby_init.h"
 
 #define MODULE_NAME "ngx_mruby"
-#define MODULE_VERSION "1.14.15"
+#define MODULE_VERSION "1.15.0"
 
 #if (nginx_version > 1007999)
 #define NGX_USE_MRUBY_UPSTREAM
 #endif
 
-typedef enum code_type_t {
-  NGX_MRB_CODE_TYPE_FILE,
-  NGX_MRB_CODE_TYPE_STRING
-} code_type_t;
+typedef enum code_type_t { NGX_MRB_CODE_TYPE_FILE, NGX_MRB_CODE_TYPE_STRING } code_type_t;
 
 typedef struct ngx_mrb_state_t {
   mrb_state *mrb;
