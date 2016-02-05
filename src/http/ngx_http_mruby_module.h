@@ -9,13 +9,14 @@
 
 #include <ngx_core.h>
 #include <ngx_http.h>
+#include <ngx_config.h>
 #include <nginx.h>
 
 #include "ngx_http_mruby_core.h"
 #include "ngx_http_mruby_init.h"
 
 #define MODULE_NAME "ngx_mruby"
-#define MODULE_VERSION "1.15.0"
+#define MODULE_VERSION "1.16.1"
 
 #if (nginx_version > 1007999)
 #define NGX_USE_MRUBY_UPSTREAM
@@ -51,6 +52,14 @@ typedef struct {
 #endif
 
 extern ngx_module_t ngx_http_mruby_module;
+
+typedef struct {
+  ngx_mrb_state_t *state;
+  ngx_mrb_code_t *ssl_handshake_code;
+  ngx_str_t *servername;
+  ngx_str_t cert_path;
+  ngx_str_t cert_key_path;
+} ngx_http_mruby_srv_conf_t;
 
 typedef struct ngx_http_mruby_main_conf_t {
   ngx_mrb_state_t *state;

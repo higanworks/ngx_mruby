@@ -10,6 +10,10 @@ def base
   "http://#{http_host}"
 end
 
+def base_ssl
+  "https://localhost:58082"
+end
+
 t = SimpleTest.new "ngx_mruby test"
 
 nginx_version = HttpRequest.new.get(base + '/nginx-version')["body"]
@@ -57,6 +61,12 @@ end
 
 t.assert('ngx_mruby - output filter', 'location /filter_dynamic_arg?hoge=fuga') do
   res = HttpRequest.new.get base + '/filter_dynamic_arg?hoge=fuga'
+  t.assert_equal 'output filter: hoge=fuga', res["body"]
+  t.assert_equal 'hoge=fuga', res["x-new-header"]
+end
+
+t.assert('ngx_mruby - output filter', 'location /filter_dynamic_arg_file?hoge=fuga') do
+  res = HttpRequest.new.get base + '/filter_dynamic_arg_file?hoge=fuga'
   t.assert_equal 'output filter: hoge=fuga', res["body"]
   t.assert_equal 'hoge=fuga', res["x-new-header"]
 end
@@ -320,14 +330,31 @@ end
 t.assert('ngx_mruby - multipul request headers', 'location /multi_headers_in') do
   res = HttpRequest.new.get base + '/multi_headers_in', nil, {"hoge" => "foo"}
   t.assert_equal 200, res.code
-  t.assert_equal '["fuga", "foo"]', res["body"]
+  t.assert_equal '["foo", "fuga"]', res["body"]
 end
 
 t.assert('ngx_mruby - multipul response headers', 'location /multi_headers_out') do
   res = HttpRequest.new.get base + '/multi_headers_out'
   t.assert_equal 200, res.code
-  t.assert_equal '["fuga", "foo"]', res["body"]
-  t.assert_equal ["fuga", "foo"], res["hoge"]
+  t.assert_equal '["foo", "fuga"]', res["body"]
+  t.assert_equal ["foo", "fuga"], res["hoge"]
+end
+
+t.assert('ngx_mruby - fix bug issue 155', 'location /fix-bug-issue-155') do
+  res = HttpRequest.new.get base + '/fix-bug-issue-155'
+  t.assert_equal 200, res.code
+  p res
+  t.assert_equal '["abc=123", "foo=bar"]', res["body"]
+  t.assert_equal ["abc=123", "foo=bar"], res['set-cookies']
+end
+
+t.assert('ngx_mruby - ssl certificate changing') do
+  res = `curl -k #{base_ssl + '/'}`
+  t.assert_equal 'ssl test ok', res
+  res = `openssl s_client -servername localhost -connect localhost:58082 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not | sed -e "s/://" | awk '{print (res = $6 - res)}' | tail -n 1`.chomp
+  t.assert_equal "1", res
+  res = `openssl s_client -servername hogehoge -connect 127.0.0.1:58082 < /dev/null 2> /dev/null | openssl x509 -text  | grep Not`.chomp
+  t.assert_equal "", res
 end
 
 #
