@@ -62,7 +62,7 @@ else
     if [ ! -e ${NGINX_SRC_VER} ]; then
         wget http://nginx.org/download/${NGINX_SRC_VER}.tar.gz
         echo "nginx Downloading ... Done"
-        tar xf ${NGINX_SRC_VER}.tar.gz
+        tar xzf ${NGINX_SRC_VER}.tar.gz
     fi
     ln -sf ${NGINX_SRC_VER} nginx_src
     NGINX_SRC=`pwd`'/nginx_src'
