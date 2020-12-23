@@ -53,8 +53,8 @@ jobs:
           BUILD_DYNAMIC_MODULE: ${{ matrix.BUILD_DYNAMIC_MODULE }}
           BUILD_WITH_OPENSSL_SRC: ${{ matrix.BUILD_WITH_OPENSSL_SRC }}
         run: |
-          apt-get -qq install rake bison git gperf zlib1g-dev g++-4.9 libstdc++-4.9-dev
-          apt-get remove -y libssl-dev
+          sudo apt-get -qq install rake bison git gperf zlib1g-dev g++-4.9 libstdc++-4.9-dev
+          sudo apt-get remove -y libssl-dev
           if [ "$CXX" = "g++" ]; then export CXX="g++-4.9" CC="gcc-4.9" LD="gcc-4.9"; fi
           $CXX -v
       - name: before_script
@@ -69,8 +69,8 @@ jobs:
           cd openssl-${OPENSSL_SRC_VERSION}
           ./config --prefix=/usr/local --shared zlib -fPIC >> /dev/null 2>&1
           make >> /dev/null 2>&1
-          make install >> /dev/null 2>&1
-          ldconfig /usr/local/lib
+          sudo make install >> /dev/null 2>&1
+          sudo ldconfig /usr/local/lib
           cd -
           openssl version
       - name: script
