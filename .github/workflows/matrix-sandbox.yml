@@ -43,10 +43,10 @@ jobs:
           BUILD_WITH_OPENSSL_SRC: ${{ matrix.BUILD_WITH_OPENSSL_SRC }}
         run: |
           id
-          echo "deb http://dk.archive.ubuntu.com/ubuntu/ xenial main" >> /etc/apt/sources.list
-          echo "deb http://dk.archive.ubuntu.com/ubuntu/ xenial universe" >> /etc/apt/sources.list
-          add-apt-repository --yes ppa:ubuntu-toolchain-r/test
-          apt-get -qq update
+          echo "deb http://dk.archive.ubuntu.com/ubuntu/ xenial main" | sudo tee -a /etc/apt/sources.list
+          echo "deb http://dk.archive.ubuntu.com/ubuntu/ xenial universe" | sudo tee -a /etc/apt/sources.list
+          sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/test
+          sudo apt-get -qq update
       - name: install
         env:
           NGINX_VERSION: ${{ matrix.NGINX_VERSION }}
