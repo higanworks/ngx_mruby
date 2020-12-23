@@ -8,6 +8,7 @@ defaults:
 
 env:
   OPENSSL_SRC_VERSION: 1.1.1i
+  CXX: g++
 
 jobs:
   build:
