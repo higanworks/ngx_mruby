@@ -1,0 +1,31 @@
+name: matrix-sandbox
+
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        NGINX_VERSION:
+          - 1.19.6
+          - 1.18.0
+          - 1.16.1
+          - 1.14.2
+        BUILD_DYNAMIC_MODULE:
+          - ""
+          - "TRUE"
+        BUILD_WITH_OPENSSL_SRC:
+          - ""
+          - "TRUE"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Echo matrix
+        env:
+          NGINX_VERSION: ${{ matrix.NGINX_VERSION }}
+          BUILD_DYNAMIC_MODULE: ${{ matrix.BUILD_DYNAMIC_MODULE }}
+          BUILD_WITH_OPENSSL_SRC: ${{ matrix.BUILD_WITH_OPENSSL_SRC }}
+        run: |
+          echo $NGINX_VERSION
+          echo $BUILD_DYNAMIC_MODULE
+          echo $BUILD_WITH_OPENSSL_SRC
